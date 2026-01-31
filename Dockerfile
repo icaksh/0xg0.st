@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server .
 
 FROM alpine:3
 
-RUN mkdir /storage
+RUN mkdir -p /storage && chmod 0777 /storage
 WORKDIR /
 
 COPY --from=builder /app/server /server

@@ -3,6 +3,16 @@
 HTTP POST files here:
     `curl -F 'file=@yourfile.png' https://0xg0.st`
 
+Options:
+    `curl -F 'file=@yourfile.png' -F 'expires=24' https://0xg0.st`
+    `curl -F 'file=@yourfile.png' -F 'expires=1700000000000' https://0xg0.st`
+    `curl -F 'file=@yourfile.png' -F 'secret=' https://0xg0.st`
+    `curl -F 'url=https://example.com/file.zip' https://0xg0.st`
+
+Manage uploads (token returned in X-Token header):
+    `curl -F 'token=TOKEN' -F 'delete=' https://0xg0.st/<id>`
+    `curl -F 'token=TOKEN' -F 'expires=72' https://0xg0.st/<id>`
+
 
 ### Shotout
 
@@ -36,6 +46,24 @@ USAGE: ./0xg0.st -p=8080 -stderrthreshold=[INFO|WARNING|FATAL] -log_dir=[string]
         log to standard error instead of files
   -p uint
         port (default 8000)
+  -max_size int
+        max upload size in bytes (default 536870912)
+  -default_expiration_hours int
+        default retention in hours (default 720)
+  -min_expiration_hours int
+        minimum retention in hours (default 720)
+  -max_expiration_hours int
+        maximum retention in hours (default 8760)
+  -purge_interval duration
+        expired file purge interval (default 1m0s)
+  -rate_limit_per_min int
+        upload rate limit per IP (0 disables)
+  -block_cidrs string
+        comma-separated CIDR ranges blocked from uploads
+  -meta_store string
+        metadata store: file or sqlite (default "file")
+  -sqlite_path string
+        sqlite database path for metadata (default "./storage/meta.db")
   -stderrthreshold value
         logs at or above this threshold go to stderr
   -v value

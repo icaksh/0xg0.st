@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  0xg0:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./storage:/storage
+      - ./logs:/var/log/0xg0st
+      - ./templates:/app/templates:ro
+    restart: unless-stopped
+    command:
+      - -p=80
+      - -stderrthreshold=INFO
+      - -purge_interval=1m
+      - -max_size=536870912
+      - -default_expiration_hours=720
+      - -min_expiration_hours=720
+      - -max_expiration_hours=8760
+      - -meta_store=sqlite
+      - -sqlite_path=/storage/meta.db

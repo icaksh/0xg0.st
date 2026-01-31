@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -16,17 +17,42 @@ import (
 var port *uint64
 var tmpl *template.Template
 var host *string
+var metaStore MetaStore
+var sqlitePath string
+var (
+	maxUploadBytes         int64
+	defaultExpirationHours int64
+	minExpirationHours     int64
+	maxExpirationHours     int64
+	purgeInterval          time.Duration
+	rateLimitPerMin        int
+	blockedCIDRs           []*net.IPNet
+)
+
+const storageDir = "./storage"
 
 // Dead simple router that just does the **perform** the job
 func router(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case strings.Contains(r.Header.Get("Content-type"), "multipart/form-data"):
-		upload(w, r)
-	case uuidMatch.MatchString(r.URL.Path):
-		getFile(w, r)
-	default:
+	if r.URL.Path == "/" {
+		if r.Method == http.MethodPost {
+			if strings.Contains(r.Header.Get("Content-Type"), "multipart/form-data") {
+				upload(w, r)
+				return
+			}
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Bad request.")
+			return
+		}
 		home(w, r)
+		return
 	}
+
+	if r.Method == http.MethodPost && strings.Contains(r.Header.Get("Content-Type"), "multipart/form-data") {
+		manage(w, r)
+		return
+	}
+
+	getFile(w, r)
 }
 
 // Route handling, logging and application serving
@@ -40,6 +66,15 @@ func main() {
 
 	host = flag.String("h", "0.0.0.0", "Address to serve on")
 	port = flag.Uint64("p", 8000, "port")
+	maxSize := flag.Int64("max_size", 512<<20, "max upload size in bytes")
+	defaultExp := flag.Int64("default_expiration_hours", 24*30, "default retention in hours")
+	minExp := flag.Int64("min_expiration_hours", 24*30, "minimum retention in hours")
+	maxExp := flag.Int64("max_expiration_hours", 24*365, "maximum retention in hours")
+	purge := flag.Duration("purge_interval", time.Minute, "expired file purge interval")
+	rateLimit := flag.Int("rate_limit_per_min", 0, "upload rate limit per IP (0 disables)")
+	blockCIDRs := flag.String("block_cidrs", "", "comma-separated CIDR ranges blocked from uploads")
+	metaStoreOpt := flag.String("meta_store", "file", "metadata store: file or sqlite")
+	sqliteOpt := flag.String("sqlite_path", "./storage/meta.db", "sqlite database path for metadata")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "USAGE: ./0xg0.st -p=8080 -stderrthreshold=[INFO|WARNING|FATAL] -log_dir=[string]\n")
@@ -49,6 +84,33 @@ func main() {
 
 	flag.Parse()
 	glog.Flush()
+
+	maxUploadBytes = *maxSize
+	defaultExpirationHours = *defaultExp
+	minExpirationHours = *minExp
+	maxExpirationHours = *maxExp
+	if defaultExpirationHours < minExpirationHours {
+		defaultExpirationHours = minExpirationHours
+	}
+	if defaultExpirationHours > maxExpirationHours {
+		defaultExpirationHours = maxExpirationHours
+	}
+	purgeInterval = *purge
+	rateLimitPerMin = *rateLimit
+	blockedCIDRs = parseCIDRs(*blockCIDRs)
+	sqlitePath = *sqliteOpt
+
+	switch strings.ToLower(strings.TrimSpace(*metaStoreOpt)) {
+	case "sqlite":
+		metaStore = &sqliteMetaStore{}
+	default:
+		metaStore = &fileMetaStore{}
+	}
+	if err := metaStore.Init(); err != nil {
+		glog.Fatalf("metadata store init failed: %s", err.Error())
+	}
+
+	go purgeExpiredLoop()
 
 	// Routing
 	http.HandleFunc("/", router)
