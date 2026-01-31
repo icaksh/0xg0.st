@@ -21,9 +21,9 @@ var metaStore MetaStore
 var sqlitePath string
 var (
 	maxUploadBytes         int64
-	defaultExpirationHours int64
-	minExpirationHours     int64
-	maxExpirationHours     int64
+	defaultExpirationMinutes int64
+	minExpirationMinutes     int64
+	maxExpirationMinutes     int64
 	purgeInterval          time.Duration
 	rateLimitPerMin        int
 	blockedCIDRs           []*net.IPNet
@@ -67,9 +67,9 @@ func main() {
 	host = flag.String("h", "0.0.0.0", "Address to serve on")
 	port = flag.Uint64("p", 8000, "port")
 	maxSize := flag.Int64("max_size", 512<<20, "max upload size in bytes")
-	defaultExp := flag.Int64("default_expiration_hours", 24*30, "default retention in hours")
-	minExp := flag.Int64("min_expiration_hours", 24*30, "minimum retention in hours")
-	maxExp := flag.Int64("max_expiration_hours", 24*365, "maximum retention in hours")
+	defaultExp := flag.Int64("default_expiration_minutes", 60*24*30, "default retention in minutes")
+	minExp := flag.Int64("min_expiration_minutes", 60*24*30, "minimum retention in minutes")
+	maxExp := flag.Int64("max_expiration_minutes", 60*24*365, "maximum retention in minutes")
 	purge := flag.Duration("purge_interval", time.Minute, "expired file purge interval")
 	rateLimit := flag.Int("rate_limit_per_min", 0, "upload rate limit per IP (0 disables)")
 	blockCIDRs := flag.String("block_cidrs", "", "comma-separated CIDR ranges blocked from uploads")
@@ -86,14 +86,14 @@ func main() {
 	glog.Flush()
 
 	maxUploadBytes = *maxSize
-	defaultExpirationHours = *defaultExp
-	minExpirationHours = *minExp
-	maxExpirationHours = *maxExp
-	if defaultExpirationHours < minExpirationHours {
-		defaultExpirationHours = minExpirationHours
+	defaultExpirationMinutes = *defaultExp
+	minExpirationMinutes = *minExp
+	maxExpirationMinutes = *maxExp
+	if defaultExpirationMinutes < minExpirationMinutes {
+		defaultExpirationMinutes = minExpirationMinutes
 	}
-	if defaultExpirationHours > maxExpirationHours {
-		defaultExpirationHours = maxExpirationHours
+	if defaultExpirationMinutes > maxExpirationMinutes {
+		defaultExpirationMinutes = maxExpirationMinutes
 	}
 	purgeInterval = *purge
 	rateLimitPerMin = *rateLimit

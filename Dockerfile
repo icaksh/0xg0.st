@@ -11,11 +11,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server .
 FROM alpine:3
 
 RUN mkdir -p /storage && chmod 0777 /storage
-WORKDIR /
+WORKDIR /app
 
-COPY --from=builder /app/server /server
+COPY --from=builder /app/server /app/server
+COPY --from=builder /app/templates /app/templates
 
 EXPOSE 80
 VOLUME ["/storage"]
 
-ENTRYPOINT ["/server", "-p=80", "-stderrthreshold=INFO"]
+ENTRYPOINT ["/app/server", "-p=80", "-stderrthreshold=INFO"]

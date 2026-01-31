@@ -15,8 +15,8 @@ services:
       - -stderrthreshold=INFO
       - -purge_interval=1m
       - -max_size=536870912
-      - -default_expiration_hours=720
-      - -min_expiration_hours=720
-      - -max_expiration_hours=8760
+      - -default_expiration_minutes=43200
+      - -min_expiration_minutes=43200
+      - -max_expiration_minutes=525600
       - -meta_store=sqlite
       - -sqlite_path=/storage/meta.db
