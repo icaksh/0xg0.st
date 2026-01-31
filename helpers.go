@@ -15,7 +15,8 @@ import (
 )
 
 const metaFilename = "meta.json"
-const hourMs = 60 * 60 * 1000
+const minuteMs = 60 * 1000
+const hourMs = 60 * minuteMs
 const defaultTokenLength = 24
 
 type fileMeta struct {
@@ -45,39 +46,83 @@ func parseExpires(raw string) (int64, error) {
 	nowMs := time.Now().UnixMilli()
 
 	if value == "" {
-		return clampExpires(nowMs+defaultExpirationHours*hourMs, nowMs), nil
+		return clampExpires(nowMs+defaultExpirationMinutes*minuteMs, nowMs), nil
 	}
 
 	n, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return 0, errors.New("expires must be an integer")
-	}
-
-	if n >= 1_000_000_000_000 {
-		if n <= nowMs {
-			return 0, errors.New("expires must be in the future")
+	if err == nil {
+		if n >= 1_000_000_000_000 {
+			if n <= nowMs {
+				return 0, errors.New("expires must be in the future")
+			}
+			return n, nil
 		}
-		return clampExpires(n, nowMs), nil
+		if n >= 1_000_000_000 {
+			expiresAtMs := n * 1000
+			if expiresAtMs <= nowMs {
+				return 0, errors.New("expires must be in the future")
+			}
+			return expiresAtMs, nil
+		}
+
+		if n <= 0 {
+			return 0, errors.New("expires must be a positive number of hours")
+		}
+
+		expiresAtMs := nowMs + n*hourMs
+		return clampExpires(expiresAtMs, nowMs), nil
 	}
 
-	if n <= 0 {
-		return 0, errors.New("expires must be a positive number of hours")
+	durationMs, err := parseExpiresDuration(value)
+	if err != nil {
+		return 0, err
 	}
-
-	expiresAtMs := nowMs + n*hourMs
+	if durationMs <= 0 {
+		return 0, errors.New("expires must be positive")
+	}
+	expiresAtMs := nowMs + durationMs
 	return clampExpires(expiresAtMs, nowMs), nil
 }
 
 func clampExpires(expiresAtMs int64, nowMs int64) int64 {
-	minMs := nowMs + minExpirationHours*hourMs
+	minMs := nowMs + minExpirationMinutes*minuteMs
 	if expiresAtMs < minMs {
 		expiresAtMs = minMs
 	}
-	maxMs := nowMs + maxExpirationHours*hourMs
+	maxMs := nowMs + maxExpirationMinutes*minuteMs
 	if expiresAtMs > maxMs {
 		expiresAtMs = maxMs
 	}
 	return expiresAtMs
+}
+
+func parseExpiresDuration(value string) (int64, error) {
+	unit := value[len(value)-1:]
+	number := strings.TrimSpace(value[:len(value)-1])
+	if number == "" {
+		return 0, errors.New("expires must include a number")
+	}
+	n, err := strconv.ParseInt(number, 10, 64)
+	if err != nil {
+		return 0, errors.New("expires duration must be an integer")
+	}
+
+	switch unit {
+	case "s":
+		return n * 1000, nil
+	case "m":
+		return n * 60 * 1000, nil
+	case "h":
+		return n * 60 * 60 * 1000, nil
+	case "d":
+		return n * 24 * 60 * 60 * 1000, nil
+	case "w":
+		return n * 7 * 24 * 60 * 60 * 1000, nil
+	case "y":
+		return n * 365 * 24 * 60 * 60 * 1000, nil
+	default:
+		return 0, errors.New("expires unit must be one of s, m, h, d, w, y")
+	}
 }
 
 func writeMetaFile(dir string, meta fileMeta) error {

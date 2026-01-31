@@ -7,14 +7,17 @@
 
 HTTP POST files here:
     curl -F 'file=@yourfile.png' {{.}}
-    curl -F 'file=@yourfile.png' -F 'expires=24' {{.}}   (expires in 24 hours)
+    curl -F 'file=@yourfile.png' -F 'expires=60' {{.}}   (expires in 60 minutes)
+    curl -F 'file=@yourfile.png' -F 'expires=2h' {{.}}   (expires in 2 hours)
+    curl -F 'file=@yourfile.png' -F 'expires=3d' {{.}}   (expires in 3 days)
+    curl -F 'file=@yourfile.png' -F 'expires=1700000000' {{.}}      (expires at unix s)
     curl -F 'file=@yourfile.png' -F 'expires=1700000000000' {{.}}   (expires at unix ms)
     curl -F 'file=@yourfile.png' -F 'secret=' {{.}}      (hard-to-guess URL)
     curl -F 'url=https://example.com/file.zip' {{.}}     (upload from URL)
 
 Manage uploads (token returned in X-Token header):
     curl -F 'token=TOKEN' -F 'delete=' {{.}}<id>         (delete)
-    curl -F 'token=TOKEN' -F 'expires=72' {{.}}<id>      (change expiry)
+    curl -F 'token=TOKEN' -F 'expires=120' {{.}}<id>     (change expiry)
 
 Append a custom file name:
     {{.}}<id>/my-file-name.ext
