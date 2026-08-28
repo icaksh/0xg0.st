@@ -16,7 +16,7 @@ clean:
 	rm -rf $(DIST_DIR) $(BIN)
 
 release:
-	@set -euo pipefail; \
+	@set -eu; \
 	mkdir -p $(DIST_DIR); \
 	if [ -n "${GOOS:-}" ] && [ -n "${GOARCH:-}" ]; then \
 		platforms="$$GOOS/$$GOARCH"; \
